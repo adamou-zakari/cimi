@@ -13,7 +13,7 @@ export default function BoutonMicro() {
   const [enEcoute, setEnEcoute] = useState(false);
   const [partiel, setPartiel] = useState("");
   const [enTranscription, setEnTranscription] = useState(false);
-  const [aConfirmer, setAConfirmer] = useState(null); // { texte, incertain }
+  const [aConfirmer, setAConfirmer] = useState(null);
   const [enVerification, setEnVerification] = useState(false);
   const [resultat, setResultat] = useState(null);
   const [erreur, setErreur] = useState("");
@@ -163,7 +163,13 @@ export default function BoutonMicro() {
       }
 
       setResultat(donnees);
-      if (voixActive) parler(phraseAPrononcer(donnees));
+
+      // Pas de voix en hausa : aucun navigateur n'embarque de voix hausa.
+      // La synthese lirait le texte avec une phonetique francaise,
+      // incomprehensible pour un locuteur. Le texte reste affiche.
+      if (voixActive && langue === "fr") {
+        parler(phraseAPrononcer(donnees));
+      }
     } catch {
       setErreur("La verification n'a pas abouti");
     } finally {
@@ -179,8 +185,6 @@ export default function BoutonMicro() {
 
   const occupe = enTranscription || enVerification;
 
-  // ---------- AFFICHAGE ----------
-
   let texteBouton = "Parler";
   if (enTranscription) texteBouton = "Transcription...";
   else if (enVerification) texteBouton = "Je verifie...";
@@ -192,6 +196,7 @@ export default function BoutonMicro() {
         langue={langue}
         onChanger={(l) => {
           setLangue(l);
+          taireLaVoix();
           reinitialiser();
         }}
         desactive={enEcoute || occupe}
@@ -212,13 +217,22 @@ export default function BoutonMicro() {
           {texteBouton}
         </button>
 
-        <button
-          onClick={basculerVoix}
-          className="px-4 py-3 rounded-full border border-gray-600 text-gray-300 hover:border-gray-400 transition text-sm"
-        >
-          {voixActive ? "Son active" : "Son coupe"}
-        </button>
+        {langue === "fr" && (
+          <button
+            onClick={basculerVoix}
+            className="px-4 py-3 rounded-full border border-gray-600 text-gray-300 hover:border-gray-400 transition text-sm"
+          >
+            {voixActive ? "Son active" : "Son coupe"}
+          </button>
+        )}
       </div>
+
+      {langue === "ha" && (
+        <p className="text-gray-500 text-xs text-center max-w-md">
+          Reponse en texte uniquement : aucune voix de synthese hausa
+          n&apos;existe dans les navigateurs.
+        </p>
+      )}
 
       {langue === "ha" && enEcoute && (
         <p className="text-gray-500 text-sm">
@@ -229,7 +243,7 @@ export default function BoutonMicro() {
       {partiel && <p className="text-gray-400 italic">{partiel}</p>}
 
       {enTranscription && (
-        <p className="text-gray-500 text-sm">
+        <p className="text-gray-500 text-sm text-center">
           Transcription en cours. Le hausa prend plus de temps : les modeles
           sont moins optimises pour cette langue.
         </p>
