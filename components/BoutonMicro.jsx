@@ -264,7 +264,7 @@ export default function BoutonMicro() {
         />
       )}
 
-      <CarteVerdict resultat={resultat} />
+            <CarteVerdict resultat={resultat} langue={langue} />
     </div>
   );
 }
