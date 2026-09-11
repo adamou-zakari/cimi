@@ -22,7 +22,7 @@ export async function POST(requete) {
       body: JSON.stringify({
         api_key: process.env.TAVILY_API_KEY,
         query: affirmation,
-        max_results: 5,
+        max_results: 3,
         search_depth: "basic",
       }),
     });
