@@ -164,9 +164,9 @@ export default function BoutonMicro() {
 
       setResultat(donnees);
 
-      // Pas de voix en hausa : aucun navigateur n'embarque de voix hausa.
-      // La synthese lirait le texte avec une phonetique francaise,
-      // incomprehensible pour un locuteur. Le texte reste affiche.
+      // En francais : voix du navigateur, instantanee et gratuite.
+      // En hausa : le navigateur n'a aucune voix, on passe par
+      // Gemini TTS a la demande via le bouton Ecouter.
       if (voixActive && langue === "fr") {
         parler(phraseAPrononcer(donnees));
       }
@@ -229,8 +229,8 @@ export default function BoutonMicro() {
 
       {langue === "ha" && (
         <p className="text-gray-500 text-xs text-center max-w-md">
-          Reponse en texte uniquement : aucune voix de synthese hausa
-          n&apos;existe dans les navigateurs.
+          La voix hausa est generee a la demande : cliquez sur Ecouter
+          apres le verdict.
         </p>
       )}
 
@@ -264,13 +264,15 @@ export default function BoutonMicro() {
         />
       )}
 
-            <CarteVerdict resultat={resultat} langue={langue} />
+      <CarteVerdict resultat={resultat} langue={langue} />
     </div>
   );
 }
 
 // Etape de confirmation : l'utilisateur relit et corrige
 // avant que la verification ne parte.
+// Justification mesuree : en test, "ta rufe" (a ferme) a ete transcrit
+// "ta bude" (a ouvert). Sens inverse, verification fausse evitee ici.
 function EcranConfirmation({ initial, incertain, onValider, onAnnuler }) {
   const [texte, setTexte] = useState(initial);
 
