@@ -1,5 +1,7 @@
 "use client";
 
+// Les couleurs sont choisies sur le verdict NORMALISE, pas sur le
+// texte affiche : "gaskiya" et "vrai" doivent donner le meme vert.
 const STYLES = {
   vrai: "border-green-600 text-green-400",
   faux: "border-red-600 text-red-400",
@@ -10,7 +12,8 @@ const STYLES = {
 export default function CarteVerdict({ resultat }) {
   if (!resultat) return null;
 
-  const style = STYLES[resultat.verdict] || STYLES["non verifiable"];
+  const cle = resultat.verdictNormalise || resultat.verdict;
+  const style = STYLES[cle] || STYLES["non verifiable"];
 
   return (
     <div className={`w-full rounded-lg border-2 p-5 ${style}`}>

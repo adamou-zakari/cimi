@@ -1,21 +1,26 @@
-import { construirePrompt } from "@/lib/prompts";
+import { construirePrompt, VERDICTS_NORMALISES } from "@/lib/prompts";
 
 const TAVILY_URL = "https://api.tavily.com/search";
-const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
+
+// Le modele est configurable via .env.local (GEMINI_MODEL).
+// Sans cette variable, on retombe sur gemini-2.5-flash,
+// qui a un quota gratuit large (~1500 requetes/jour) contrairement
+// aux modeles en preversion limites a 20/jour.
+const MODELE = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODELE}:generateContent`;
 
 export async function POST(requete) {
   try {
-    const { affirmation } = await requete.json();
+    const { affirmation, langue = "fr" } = await requete.json();
 
     if (!affirmation || affirmation.trim().length < 10) {
       return Response.json(
-        { error: "Phrase trop courte pour être vérifiée" },
+        { error: "Phrase trop courte pour etre verifiee" },
         { status: 400 }
       );
     }
 
-    // ÉTAPE 1 — Chercher sur le web.
+    // ETAPE 1 - Chercher sur le web.
     const rechercheReponse = await fetch(TAVILY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -29,25 +34,29 @@ export async function POST(requete) {
 
     if (!rechercheReponse.ok) {
       const detail = await rechercheReponse.text();
-      console.error("Tavily a refusé:", rechercheReponse.status, detail);
+      console.error("Tavily a refuse:", rechercheReponse.status, detail);
       throw new Error("Recherche web indisponible");
     }
 
     const recherche = await rechercheReponse.json();
     const sources = recherche.results || [];
 
-    // Aucune source : on s'arrête. On n'invente pas.
+    // Aucune source : on s'arrete. On n'invente pas.
     if (sources.length === 0) {
       return Response.json({
         affirmation,
-        verdict: "non vérifiable",
-        explication: "Aucune source trouvée sur ce sujet.",
+        verdict: langue === "ha" ? "ba a tabbatar ba" : "non verifiable",
+        verdictNormalise: "non verifiable",
+        explication:
+          langue === "ha"
+            ? "Ba a samu wata majiya kan wannan batu ba."
+            : "Aucune source trouvee sur ce sujet.",
         sources: [],
-        confiance: "faible",
+        confiance: langue === "ha" ? "mai rauni" : "faible",
       });
     }
 
-    // ÉTAPE 2 — Demander à Gemini de conclure à partir des sources.
+    // ETAPE 2 - Demander a Gemini de conclure a partir des sources.
     const geminiReponse = await fetch(
       `${GEMINI_URL}?key=${process.env.GOOGLE_API_KEY}`,
       {
@@ -55,51 +64,63 @@ export async function POST(requete) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [
-            {
-              parts: [{ text: construirePrompt(affirmation, sources) }],
-            },
+            { parts: [{ text: construirePrompt(affirmation, sources, langue) }] },
           ],
-          generationConfig: {
-            temperature: 0, // réponse la plus stable possible
-            maxOutputTokens: 2000,
-          },
+          generationConfig: { temperature: 0, maxOutputTokens: 2000 },
         }),
       }
     );
 
     if (!geminiReponse.ok) {
       const detail = await geminiReponse.text();
-      console.error("Gemini a refusé:", geminiReponse.status, detail);
+      console.error(`Gemini (${MODELE}) a refuse:`, geminiReponse.status, detail);
+
+      if (geminiReponse.status === 503) {
+        return Response.json(
+          { error: "Le service est momentanement surcharge. Reessayez." },
+          { status: 503 }
+        );
+      }
+
+      if (geminiReponse.status === 429) {
+        return Response.json(
+          { error: "Limite quotidienne atteinte. Reessayez plus tard." },
+          { status: 429 }
+        );
+      }
+
       throw new Error("Analyse indisponible");
     }
 
     const resultat = await geminiReponse.json();
-
-    // La structure de Gemini est différente de celle d'OpenAI.
     let texte = resultat.candidates[0].content.parts[0].text.trim();
-
-    // Le modèle entoure parfois son JSON de balises de code.
     texte = texte.replace(/```json|```/g, "").trim();
 
     const verdict = JSON.parse(texte);
 
-    // ÉTAPE 3 — Rattacher les vraies sources aux numéros cités.
+    // ETAPE 3 - Rattacher les vraies sources aux numeros cites.
     const sourcesUtilisees = (verdict.sources_utilisees || [])
       .map((numero) => sources[numero - 1])
       .filter(Boolean)
       .map((s) => ({ titre: s.title, url: s.url }));
 
+    // Le verdict peut etre en hausa. L'interface a besoin d'une cle
+    // stable pour choisir la couleur, quelle que soit la langue.
+    const cle = (verdict.verdict || "").toLowerCase().trim();
+    const verdictNormalise = VERDICTS_NORMALISES[cle] || "non verifiable";
+
     return Response.json({
       affirmation: verdict.affirmation,
       verdict: verdict.verdict,
+      verdictNormalise,
       explication: verdict.explication,
       confiance: verdict.confiance,
       sources: sourcesUtilisees,
     });
   } catch (error) {
-    console.error("Erreur vérification:", error);
+    console.error("Erreur verification:", error);
     return Response.json(
-      { error: "La vérification n'a pas abouti" },
+      { error: "La verification n'a pas abouti" },
       { status: 500 }
     );
   }
