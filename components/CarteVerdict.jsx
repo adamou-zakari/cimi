@@ -2,13 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 
-// Les couleurs sont choisies sur le verdict NORMALISE, pas sur le
-// texte affiche : "gaskiya" et "vrai" doivent donner le meme vert.
-const STYLES = {
-  vrai: "border-green-600 text-green-400",
-  faux: "border-red-600 text-red-400",
-  "partiellement vrai": "border-yellow-600 text-yellow-400",
-  "non verifiable": "border-gray-600 text-gray-400",
+// La couleur vient du verdict NORMALISE : "gaskiya" et "vrai"
+// doivent produire le meme vert, quelle que soit la langue.
+const COULEURS = {
+  vrai: "var(--vrai)",
+  faux: "var(--faux)",
+  "partiellement vrai": "var(--partiel)",
+  "non verifiable": "var(--inconnu)",
 };
 
 export default function CarteVerdict({ resultat, langue }) {
@@ -17,8 +17,8 @@ export default function CarteVerdict({ resultat, langue }) {
   const audioRef = useRef(null);
   const urlRef = useRef(null);
 
-  // On libere l'URL du blob quand le composant disparait
-  // ou quand un nouveau verdict arrive : sinon la memoire fuit.
+  // On libere l'URL du blob a chaque nouveau verdict :
+  // sinon chaque ecoute laisse un fichier audio en memoire.
   useEffect(() => {
     return () => {
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
@@ -28,7 +28,7 @@ export default function CarteVerdict({ resultat, langue }) {
   if (!resultat) return null;
 
   const cle = resultat.verdictNormalise || resultat.verdict;
-  const style = STYLES[cle] || STYLES["non verifiable"];
+  const couleur = COULEURS[cle] || COULEURS["non verifiable"];
 
   async function ecouter() {
     setErreurVoix("");
@@ -52,7 +52,6 @@ export default function CarteVerdict({ resultat, langue }) {
       }
 
       const blob = await reponse.blob();
-
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
       urlRef.current = URL.createObjectURL(blob);
 
@@ -68,23 +67,36 @@ export default function CarteVerdict({ resultat, langue }) {
   }
 
   return (
-    <div className={`w-full rounded-lg border-2 p-5 ${style}`}>
-      <p className="text-sm text-gray-400 mb-2">{resultat.affirmation}</p>
-      <p className="text-2xl font-bold uppercase mb-3">{resultat.verdict}</p>
-      <p className="text-gray-200 mb-4">{resultat.explication}</p>
+    <section
+      className="verdict w-full"
+      style={{ "--couleur-verdict": couleur }}
+      aria-live="polite"
+    >
+      <p
+        className="text-sm leading-relaxed mb-4"
+        style={{ color: "var(--coton-doux)" }}
+      >
+        {resultat.affirmation}
+      </p>
+
+      <p className="verdict-mot mb-4">{resultat.verdict}</p>
+
+      <p className="leading-relaxed mb-5">{resultat.explication}</p>
 
       {langue === "ha" && (
-        <div className="mb-4">
+        <div className="mb-5">
           <button
             onClick={ecouter}
             disabled={chargementVoix}
-            className="px-4 py-2 rounded border border-gray-600 text-gray-300 text-sm hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bouton-contour"
           >
-            {chargementVoix ? "Generation de la voix..." : "Ecouter en hausa"}
+            {chargementVoix ? "Generation de la voix" : "Ecouter en hausa"}
           </button>
 
           {erreurVoix && (
-            <p className="text-red-500 text-xs mt-2">{erreurVoix}</p>
+            <p className="text-xs mt-2" style={{ color: "var(--faux)" }}>
+              {erreurVoix}
+            </p>
           )}
 
           <audio ref={audioRef} className="hidden" />
@@ -92,30 +104,42 @@ export default function CarteVerdict({ resultat, langue }) {
       )}
 
       {resultat.sources && resultat.sources.length > 0 && (
-        <div className="border-t border-gray-700 pt-3">
-          <p className="text-xs text-gray-500 mb-2">
-            Sources - verifiez par vous-meme :
+        <div
+          className="pt-4"
+          style={{ borderTop: "1px solid var(--encre-trait)" }}
+        >
+          <p className="text-xs mb-3" style={{ color: "var(--coton-doux)" }}>
+            Lisez les sources vous-meme
           </p>
-          <ul className="space-y-1">
+          {/* Numerotees parce que ce sont reellement des pieces
+              successives d'un dossier, pas une decoration. */}
+          <ol className="space-y-2">
             {resultat.sources.map((source, i) => (
-              <li key={i}>
+              <li key={i} className="flex gap-3 text-sm">
+                <span
+                  className="shrink-0 tabular-nums"
+                  style={{ color: "var(--mil)" }}
+                >
+                  {i + 1}
+                </span>
                 <a
                   href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-400 hover:underline"
+                  className="hover:underline"
+                  style={{ color: "var(--coton)" }}
                 >
                   {source.titre}
                 </a>
               </li>
             ))}
-          </ul>
+          </ol>
         </div>
       )}
 
-      <p className="text-xs text-gray-500 mt-3">
+      <p className="text-xs mt-5" style={{ color: "var(--coton-doux)" }}>
         Confiance : {resultat.confiance}
       </p>
-    </div>
+    </section>
   );
 }

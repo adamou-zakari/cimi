@@ -1,26 +1,172 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------
+   CIMI - systeme visuel
+
+   Indigo : couleur du textile teint haoussa et touareg.
+   Choix ancre dans le terrain, pas un noir par defaut.
+   Or de mil pour l'accent, blanc coton pour le texte.
+   --------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --encre: #12183a;         /* fond, indigo profond */
+  --encre-haut: #1b2352;    /* surface surelevee */
+  --encre-trait: #2b3570;   /* filets et bordures */
+  --coton: #eeeae0;         /* texte principal, blanc chaud */
+  --coton-doux: #9aa0bd;    /* texte secondaire */
+  --mil: #e0a83b;           /* accent, or de mil */
+
+  --vrai: #46a473;
+  --faux: #d1503f;
+  --partiel: #d99c2b;
+  --inconnu: #737d9e;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--encre);
+  color: var(--coton);
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--police-corps), system-ui, sans-serif;
+}
+
+.display {
+  font-family: var(--police-titre), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Le bouton principal. Un seul element porte la couleur d'accent. */
+.bouton-parler {
+  font-family: var(--police-titre), system-ui, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 1.1rem 3rem;
+  border-radius: 999px;
+  background: var(--mil);
+  color: var(--encre);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.bouton-parler:hover:not(:disabled) {
+  background: #eab64f;
+}
+.bouton-parler:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.bouton-parler:disabled {
+  background: var(--encre-trait);
+  color: var(--coton-doux);
+  cursor: not-allowed;
+}
+.bouton-parler[data-etat="ecoute"] {
+  background: var(--faux);
+  color: var(--coton);
+}
+
+/* Boutons secondaires : contour seul, jamais de remplissage,
+   pour que l'accent reste unique sur la page. */
+.bouton-contour {
+  font-size: 0.85rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--coton-doux);
+  border: 1px solid var(--encre-trait);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.bouton-contour:hover:not(:disabled) {
+  border-color: var(--coton-doux);
+  color: var(--coton);
+}
+.bouton-contour:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* La carte verdict : filet vertical a gauche, comme un tampon
+   de controle appose en marge d'un document. */
+.verdict {
+  background: var(--encre-haut);
+  border-left: 3px solid var(--couleur-verdict, var(--inconnu));
+  border-radius: 0 10px 10px 0;
+  padding: 1.75rem 1.75rem 1.5rem;
+}
+.verdict-mot {
+  font-family: var(--police-titre), system-ui, sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.25rem, 7vw, 3.25rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--couleur-verdict, var(--inconnu));
+}
+
+.champ {
+  background: var(--encre);
+  border: 1px solid var(--encre-trait);
+  border-radius: 8px;
+  color: var(--coton);
+  padding: 0.85rem;
+  width: 100%;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+.champ:focus {
+  outline: none;
+  border-color: var(--mil);
+}
+
+.onglet {
+  padding: 0.7rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--encre-trait);
+  background: transparent;
+  color: var(--coton-doux);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.onglet:hover:not(:disabled) {
+  border-color: var(--coton-doux);
+}
+.onglet[data-actif="true"] {
+  border-color: var(--mil);
+  color: var(--coton);
+}
+.onglet:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Focus clavier visible partout : exigence d'accessibilite. */
+:focus-visible {
+  outline: 2px solid var(--mil);
+  outline-offset: 3px;
+}
+
+/* Le seul mouvement non declenche par l'utilisateur :
+   le battement pendant l'ecoute. Il signale un etat actif. */
+@keyframes battement {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.battement {
+  animation: battement 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

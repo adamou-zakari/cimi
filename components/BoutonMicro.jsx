@@ -120,7 +120,7 @@ export default function BoutonMicro() {
       }
       setEnEcoute(true);
     } catch {
-      setErreur("Impossible d'acceder au micro. Verifiez l'autorisation.");
+      setErreur("Le micro n'est pas accessible. Autorisez-le dans votre navigateur.");
       arreterEcoute();
     }
   }
@@ -165,8 +165,8 @@ export default function BoutonMicro() {
       setResultat(donnees);
 
       // En francais : voix du navigateur, instantanee et gratuite.
-      // En hausa : le navigateur n'a aucune voix, on passe par
-      // Gemini TTS a la demande via le bouton Ecouter.
+      // En hausa : aucun navigateur n'a de voix hausa, on passe par
+      // Gemini TTS a la demande depuis la carte verdict.
       if (voixActive && langue === "fr") {
         parler(phraseAPrononcer(donnees));
       }
@@ -177,21 +177,15 @@ export default function BoutonMicro() {
     }
   }
 
-  function basculerVoix() {
-    const nouvelEtat = !voixActive;
-    setVoixActive(nouvelEtat);
-    if (!nouvelEtat) taireLaVoix();
-  }
-
   const occupe = enTranscription || enVerification;
 
   let texteBouton = "Parler";
-  if (enTranscription) texteBouton = "Transcription...";
-  else if (enVerification) texteBouton = "Je verifie...";
-  else if (enEcoute) texteBouton = "Arreter";
+  if (enTranscription) texteBouton = "Transcription";
+  else if (enVerification) texteBouton = "Verification";
+  else if (enEcoute) texteBouton = "Terminer";
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-xl">
+    <div className="flex flex-col items-center gap-7 w-full max-w-xl">
       <SelecteurLangue
         langue={langue}
         onChanger={(l) => {
@@ -202,58 +196,66 @@ export default function BoutonMicro() {
         desactive={enEcoute || occupe}
       />
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <button
           onClick={enEcoute ? arreter : demarrer}
           disabled={occupe}
-          className={`px-8 py-4 rounded-full text-white font-medium transition ${
-            occupe
-              ? "bg-gray-600 cursor-not-allowed"
-              : enEcoute
-              ? "bg-red-600 animate-pulse"
-              : "bg-blue-600 hover:bg-blue-700"
-          }`}
+          data-etat={enEcoute ? "ecoute" : "repos"}
+          className={`bouton-parler ${enEcoute ? "battement" : ""}`}
         >
           {texteBouton}
         </button>
 
         {langue === "fr" && (
           <button
-            onClick={basculerVoix}
-            className="px-4 py-3 rounded-full border border-gray-600 text-gray-300 hover:border-gray-400 transition text-sm"
+            onClick={() => {
+              const suivant = !voixActive;
+              setVoixActive(suivant);
+              if (!suivant) taireLaVoix();
+            }}
+            className="bouton-contour"
           >
-            {voixActive ? "Son active" : "Son coupe"}
+            {voixActive ? "Couper le son" : "Activer le son"}
           </button>
         )}
       </div>
 
-      {langue === "ha" && (
-        <p className="text-gray-500 text-xs text-center max-w-md">
-          La voix hausa est generee a la demande : cliquez sur Ecouter
-          apres le verdict.
-        </p>
-      )}
+      {/* Un seul message d'etat a la fois, sous le bouton. */}
+      <div className="min-h-6 text-center">
+        {enEcoute && langue === "ha" && (
+          <p className="text-sm" style={{ color: "var(--coton-doux)" }}>
+            Parlez, puis appuyez sur Terminer.
+          </p>
+        )}
 
-      {langue === "ha" && enEcoute && (
-        <p className="text-gray-500 text-sm">
-          Parlez, puis appuyez sur Arreter quand vous avez fini.
-        </p>
-      )}
+        {enTranscription && (
+          <p
+            className="text-sm max-w-md mx-auto"
+            style={{ color: "var(--coton-doux)" }}
+          >
+            Transcription du hausa. Les modeles sont moins entraines sur cette
+            langue, cela prend quelques secondes de plus.
+          </p>
+        )}
 
-      {partiel && <p className="text-gray-400 italic">{partiel}</p>}
+        {enVerification && (
+          <p className="text-sm" style={{ color: "var(--coton-doux)" }}>
+            Recherche des sources.
+          </p>
+        )}
 
-      {enTranscription && (
-        <p className="text-gray-500 text-sm text-center">
-          Transcription en cours. Le hausa prend plus de temps : les modeles
-          sont moins optimises pour cette langue.
-        </p>
-      )}
+        {partiel && (
+          <p className="italic" style={{ color: "var(--coton-doux)" }}>
+            {partiel}
+          </p>
+        )}
 
-      {enVerification && (
-        <p className="text-gray-500 text-sm">Recherche des sources en cours...</p>
-      )}
-
-      {erreur && <p className="text-red-500 text-sm">{erreur}</p>}
+        {erreur && (
+          <p className="text-sm" style={{ color: "var(--faux)" }}>
+            {erreur}
+          </p>
+        )}
+      </div>
 
       {aConfirmer && (
         <EcranConfirmation
@@ -269,46 +271,51 @@ export default function BoutonMicro() {
   );
 }
 
-// Etape de confirmation : l'utilisateur relit et corrige
-// avant que la verification ne parte.
+// Etape de confirmation : l'utilisateur relit et corrige avant
+// que la verification ne parte.
 // Justification mesuree : en test, "ta rufe" (a ferme) a ete transcrit
 // "ta bude" (a ouvert). Sens inverse, verification fausse evitee ici.
 function EcranConfirmation({ initial, incertain, onValider, onAnnuler }) {
   const [texte, setTexte] = useState(initial);
 
   return (
-    <div className="w-full rounded-lg border border-gray-700 p-4">
-      <p className="text-xs text-gray-500 mb-2">
-        Cimi a entendu ceci. Corrigez si besoin avant de verifier.
-      </p>
+    <div
+      className="w-full rounded-lg p-5"
+      style={{ border: "1px solid var(--encre-trait)" }}
+    >
+      <label
+        htmlFor="transcription"
+        className="block text-sm mb-3"
+        style={{ color: "var(--coton-doux)" }}
+      >
+        Voici ce que Cimi a entendu. Corrigez avant de verifier.
+      </label>
 
       {incertain && (
-        <p className="text-xs text-yellow-500 mb-2">
-          Certains passages sont marques [?] : Cimi n&apos;est pas sur de les
-          avoir bien entendus.
+        <p className="text-xs mb-3" style={{ color: "var(--partiel)" }}>
+          Les passages marques [?] n&apos;ont pas ete compris avec certitude.
         </p>
       )}
 
       <textarea
+        id="transcription"
         value={texte}
         onChange={(e) => setTexte(e.target.value)}
         rows={3}
-        className="w-full bg-black border border-gray-700 rounded p-3 text-white text-sm focus:border-blue-500 outline-none"
+        className="champ"
       />
 
-      <div className="flex gap-3 mt-3">
+      <div className="flex gap-3 mt-4">
         <button
           onClick={() => onValider(texte)}
           disabled={texte.trim().length < 10}
-          className="px-5 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed"
+          className="bouton-parler"
+          style={{ padding: "0.7rem 1.75rem", fontSize: "0.95rem" }}
         >
           Verifier
         </button>
-        <button
-          onClick={onAnnuler}
-          className="px-5 py-2 rounded border border-gray-700 text-gray-400 text-sm hover:border-gray-500"
-        >
-          Annuler
+        <button onClick={onAnnuler} className="bouton-contour">
+          Recommencer
         </button>
       </div>
     </div>
