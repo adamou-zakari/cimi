@@ -2,12 +2,13 @@
 
 const LANGUES = [
   { code: "fr", nom: "Francais", note: "reponse immediate" },
-  { code: "ha", nom: "Hausa", note: "quelques secondes de plus" },
+  { code: "ha", nom: "Hausa", note: "avec la voix" },
+  { code: "zar", nom: "Zarma", note: "texte seulement" },
 ];
 
 export default function SelecteurLangue({ langue, onChanger, desactive }) {
   return (
-    <div className="flex gap-2" role="group" aria-label="Langue">
+    <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Langue">
       {LANGUES.map((l) => (
         <button
           key={l.code}

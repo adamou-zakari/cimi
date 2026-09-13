@@ -1,13 +1,14 @@
-import { construirePrompt, VERDICTS_NORMALISES } from "@/lib/prompts";
+import { construirePrompt, SANS_SOURCE } from "@/lib/prompts";
 
 const TAVILY_URL = "https://api.tavily.com/search";
 
 // Le modele est configurable via .env.local (GEMINI_MODEL).
-// Sans cette variable, on retombe sur gemini-2.5-flash,
-// qui a un quota gratuit large (~1500 requetes/jour) contrairement
-// aux modeles en preversion limites a 20/jour.
-const MODELE = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+// gemini-3.1-flash-lite : version stable, ~1500 requetes/jour.
+// Les modeles en preversion sont limites a 20/jour.
+const MODELE = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODELE}:generateContent`;
+
+const CLES_VALIDES = ["vrai", "faux", "partiel", "non_verifiable"];
 
 export async function POST(requete) {
   try {
@@ -41,18 +42,17 @@ export async function POST(requete) {
     const recherche = await rechercheReponse.json();
     const sources = recherche.results || [];
 
-    // Aucune source : on s'arrete. On n'invente pas.
+    // Aucune source : on s'arrete sans appeler le modele.
+    // Sans sources, il comblerait le vide avec ce qu'il croit savoir.
     if (sources.length === 0) {
+      const secours = SANS_SOURCE[langue] || SANS_SOURCE.fr;
       return Response.json({
         affirmation,
-        verdict: langue === "ha" ? "ba a tabbatar ba" : "non verifiable",
-        verdictNormalise: "non verifiable",
-        explication:
-          langue === "ha"
-            ? "Ba a samu wata majiya kan wannan batu ba."
-            : "Aucune source trouvee sur ce sujet.",
+        cle: "non_verifiable",
+        verdict: secours.verdict,
+        explication: secours.explication,
+        confiance: secours.confiance,
         sources: [],
-        confiance: langue === "ha" ? "mai rauni" : "faible",
       });
     }
 
@@ -81,14 +81,12 @@ export async function POST(requete) {
           { status: 503 }
         );
       }
-
       if (geminiReponse.status === 429) {
         return Response.json(
           { error: "Limite quotidienne atteinte. Reessayez plus tard." },
           { status: 429 }
         );
       }
-
       throw new Error("Analyse indisponible");
     }
 
@@ -104,15 +102,14 @@ export async function POST(requete) {
       .filter(Boolean)
       .map((s) => ({ titre: s.title, url: s.url }));
 
-    // Le verdict peut etre en hausa. L'interface a besoin d'une cle
-    // stable pour choisir la couleur, quelle que soit la langue.
-    const cle = (verdict.verdict || "").toLowerCase().trim();
-    const verdictNormalise = VERDICTS_NORMALISES[cle] || "non verifiable";
+    // La cle determine la couleur ; le verdict est traduit pour l'utilisateur.
+    // Ce decouplage evite de maintenir une table de traduction par langue.
+    const cle = CLES_VALIDES.includes(verdict.cle) ? verdict.cle : "non_verifiable";
 
     return Response.json({
       affirmation: verdict.affirmation,
+      cle,
       verdict: verdict.verdict,
-      verdictNormalise,
       explication: verdict.explication,
       confiance: verdict.confiance,
       sources: sourcesUtilisees,

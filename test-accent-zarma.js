@@ -1,74 +1,76 @@
-// Objectif : que la voix sonne nigerienne, pas etrangere.
-// On ne cherche plus la comprehension mais l'accent.
+// Troisieme approche, apres recherche sur la phonologie du zarma.
 // Usage : node test-accent-zarma.js
-// Produit accent-1.wav a accent-5.wav.
+//
+// Ce que la recherche a corrige :
+// 1. Le zarma est TONAL (bas, haut, descendant, montant). Jamais mentionne
+//    dans les consignes precedentes. Une langue tonale lue sans tons
+//    sonne etrangere quoi qu'on fasse par ailleurs.
+// 2. Le zarma A des voyelles nasales phonemiques. La consigne precedente
+//    disait "jamais de nasale" : c'etait faux et sans doute nuisible.
+// 3. Le parler de Niamey s'appelle zarma-tarhay.
 
 const fs = require("fs");
 
 const CLE = process.env.GOOGLE_API_KEY;
 const MODELE = "gemini-3.1-flash-tts-preview";
 
-const PHRASE = "Nijer gomnati na fondo daabu, fondo da Benin game.";
+const PHRASE = "Nijer gomnati na fondo daabu, ingay da Benin gamara.";
 
-// Reecriture phonetique : on separe les syllabes et on marque
-// les voyelles longues, pour empecher le modele d'appliquer
-// ses reflexes francais (nasalisation, R uvulaire, liaison).
-const PHRASE_PHONETIQUE =
-  "Ni-jèr go-mna-ti na fon-do daa-bou, fon-do da Bé-nin ga-mé.";
+const TONS =
+  "Le zarma est une langue a tons. Il y a quatre tons : bas, haut, " +
+  "descendant et montant. Le ton porte le sens : un meme mot dit sur " +
+  "un ton different devient un autre mot. Ne lis pas sur une melodie " +
+  "plate ni sur une intonation francaise montante en fin de phrase.\n";
 
-const PHONOLOGIE =
-  "Regles de prononciation du zarma (langue songhai du Niger) :\n" +
-  "- Les voyelles sont pures : a, e, i, o, u. Jamais de voyelle nasale francaise (an, on, in).\n" +
-  "- Le n final se prononce, il ne nasalise pas la voyelle qui precede.\n" +
-  "- Le r est bref et roule du bout de la langue, jamais le r guttural francais.\n" +
-  "- Les voyelles doubles (aa, ee, oo) sont tenues plus longtemps.\n" +
-  "- Chaque syllabe dure a peu pres le meme temps. Pas d'accent tonique francais en fin de mot.\n" +
-  "- Aucune liaison entre les mots. Chaque mot reste detache.\n" +
-  "- Les finales ne sont pas avalees : la derniere voyelle de chaque mot est prononcee.\n";
+const SONS =
+  "Sons du zarma :\n" +
+  "- Cinq voyelles : a, e, i, o, u. Elles existent aussi en version longue " +
+  "(doublees a l'ecrit : aa, ee, ii, oo, uu) et la longueur change le sens.\n" +
+  "- Le zarma possede des voyelles nasales. Ne les evite pas, elles sont " +
+  "normales dans cette langue.\n" +
+  "- Le r est bref et roule du bout de la langue.\n" +
+  "- Chaque syllabe dure a peu pres le meme temps.\n" +
+  "- Aucune liaison entre les mots, et les finales sont prononcees.\n";
 
 const VARIANTES = [
   {
-    nom: "accent-1",
-    description: "Phonologie songhai detaillee",
+    nom: "tons-1",
+    note: "Tons seuls",
     voix: "Kore",
-    texte: PHONOLOGIE + "\nLis maintenant ce texte :\n\n" + PHRASE,
+    texte: TONS + "\nLis ce texte en zarma :\n\n" + PHRASE,
   },
   {
-    nom: "accent-2",
-    description: "Texte reecrit phonetiquement",
+    nom: "tons-2",
+    note: "Tons + sons corriges",
     voix: "Kore",
-    texte:
-      "Lis ce texte syllabe par syllabe, voyelles pures, r roule, " +
-      "sans nasalisation :\n\n" + PHRASE_PHONETIQUE,
+    texte: TONS + "\n" + SONS + "\nLis ce texte en zarma :\n\n" + PHRASE,
   },
   {
-    nom: "accent-3",
-    description: "Identite du locuteur plutot que consigne technique",
+    nom: "tons-3",
+    note: "Dialecte nomme + tons + sons",
     voix: "Kore",
     texte:
-      "Tu es une presentatrice de radio a Niamey, au Niger. Le zarma est ta " +
-      "langue maternelle, tu l'as parlee toute ta vie. Tu lis une breve " +
-      "d'information a l'antenne, d'une voix posee et naturelle. " +
-      "Ton accent est celui de Niamey, pas celui d'un etranger qui apprend " +
-      "la langue :\n\n" + PHRASE,
+      "Tu parles le zarma-tarhay, le parler de Niamey et de Dosso. " +
+      "C'est ta langue maternelle.\n\n" + TONS + "\n" + SONS +
+      "\nLis cette breve de radio :\n\n" + PHRASE,
   },
   {
-    nom: "accent-4",
-    description: "Identite + phonologie + texte phonetique",
-    voix: "Kore",
-    texte:
-      "Tu es une presentatrice de radio a Niamey. Le zarma est ta langue " +
-      "maternelle.\n\n" + PHONOLOGIE +
-      "\nLis cette breve a l'antenne, voix posee :\n\n" + PHRASE_PHONETIQUE,
-  },
-  {
-    nom: "accent-5",
-    description: "Meme consigne complete, voix Aoede",
+    nom: "tons-4",
+    note: "Tout, voix Aoede",
     voix: "Aoede",
     texte:
-      "Tu es une presentatrice de radio a Niamey. Le zarma est ta langue " +
-      "maternelle.\n\n" + PHONOLOGIE +
-      "\nLis cette breve a l'antenne, voix posee :\n\n" + PHRASE_PHONETIQUE,
+      "Tu parles le zarma-tarhay, le parler de Niamey et de Dosso. " +
+      "C'est ta langue maternelle.\n\n" + TONS + "\n" + SONS +
+      "\nLis cette breve de radio :\n\n" + PHRASE,
+  },
+  {
+    nom: "tons-5",
+    note: "Tout, voix Charon",
+    voix: "Charon",
+    texte:
+      "Tu parles le zarma-tarhay, le parler de Niamey et de Dosso. " +
+      "C'est ta langue maternelle.\n\n" + TONS + "\n" + SONS +
+      "\nLis cette breve de radio :\n\n" + PHRASE,
   },
 ];
 
@@ -79,8 +81,6 @@ if (!CLE) {
 }
 
 function ajouterEnteteWav(pcm, taux = 24000) {
-  const canaux = 1;
-  const bits = 16;
   const e = Buffer.alloc(44);
   e.write("RIFF", 0);
   e.writeUInt32LE(36 + pcm.length, 4);
@@ -88,11 +88,11 @@ function ajouterEnteteWav(pcm, taux = 24000) {
   e.write("fmt ", 12);
   e.writeUInt32LE(16, 16);
   e.writeUInt16LE(1, 20);
-  e.writeUInt16LE(canaux, 22);
+  e.writeUInt16LE(1, 22);
   e.writeUInt32LE(taux, 24);
-  e.writeUInt32LE((taux * canaux * bits) / 8, 28);
-  e.writeUInt16LE((canaux * bits) / 8, 32);
-  e.writeUInt16LE(bits, 34);
+  e.writeUInt32LE(taux * 2, 28);
+  e.writeUInt16LE(2, 32);
+  e.writeUInt16LE(16, 34);
   e.write("data", 36);
   e.writeUInt32LE(pcm.length, 40);
   return Buffer.concat([e, pcm]);
@@ -118,13 +118,13 @@ async function genererUne(v) {
 
   if (!reponse.ok) {
     const d = await reponse.text();
-    return { ok: false, detail: `${reponse.status} ${d.slice(0, 160)}` };
+    return { ok: false, detail: `${reponse.status} ${d.slice(0, 140)}` };
   }
 
   const donnees = await reponse.json();
   const partie = donnees.candidates?.[0]?.content?.parts?.[0];
   const audio = partie?.inlineData?.data || partie?.inline_data?.data;
-  if (!audio) return { ok: false, detail: "aucun audio renvoye" };
+  if (!audio) return { ok: false, detail: "aucun audio" };
 
   const pcm = Buffer.from(audio, "base64");
   fs.writeFileSync(`${v.nom}.wav`, ajouterEnteteWav(pcm));
@@ -132,26 +132,23 @@ async function genererUne(v) {
 }
 
 async function principal() {
-  console.log(`Phrase     : ${PHRASE}`);
-  console.log(`Phonetique : ${PHRASE_PHONETIQUE}\n`);
+  console.log(`Phrase : ${PHRASE}\n`);
+  console.log("Nouveaute : les tons. Le zarma en a quatre, ils portent le sens.\n");
 
   for (const v of VARIANTES) {
-    console.log(`${v.nom} - ${v.description} (voix ${v.voix})`);
-    const debut = Date.now();
+    console.log(`${v.nom} - ${v.note} (${v.voix})`);
     try {
       const r = await genererUne(v);
-      const duree = ((Date.now() - debut) / 1000).toFixed(1);
-      console.log(
-        r.ok ? `  ecrit (${r.taille} Ko, ${duree}s)\n` : `  echec : ${r.detail}\n`
-      );
+      console.log(r.ok ? `  ecrit (${r.taille} Ko)\n` : `  echec : ${r.detail}\n`);
     } catch (e) {
       console.log(`  echec : ${e.message}\n`);
     }
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 2000));
   }
 
-  console.log("Ecoute les cinq. Une seule question :");
-  console.log("lequel sonne comme quelqu'un de Niamey, et non comme un etranger ?");
+  console.log("Ecoute les cinq. Deux questions :");
+  console.log("1. Y a-t-il enfin une melodie tonale, ou est-ce toujours plat ?");
+  console.log("2. Benin est-il prononce correctement, sans finale francaise ?");
 }
 
 principal().catch((e) => console.error("Echec :", e.message));
