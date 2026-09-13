@@ -6,7 +6,7 @@ Speak a claim you heard. Cimi transcribes it, searches the web, and answers with
 
 Built on AssemblyAI for the Voice Agent Hackathon, September 2026.
 
-**Live: https://cimi-psi.vercel.app**
+**Live: [cimi-psi.vercel.app](https://cimi-psi.vercel.app)**
 
 ---
 
@@ -24,14 +24,14 @@ Cimi works in all three anyway, and shows honestly where the technology stops.
 
 You press a button and speak. Cimi transcribes, shows you what it heard, and waits for you to confirm. Then it searches the web, reads the sources, and returns a verdict in the language you spoke — with every source listed and clickable.
 
-```
+```text
 Speech  →  Transcription  →  You confirm  →  Web search  →  Verdict + sources
 ```
 
 Two transcription paths, because AssemblyAI covers French but neither Hausa nor Zarma.
 
 | Language | Transcription | Latency | Voice reply |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | French | AssemblyAI real-time streaming | immediate | browser TTS |
 | Hausa | Gemini, file-based | 5–8 s | Gemini TTS, on demand |
 | Zarma | Gemini, file-based | 3–4 s | none available |
@@ -47,7 +47,7 @@ Every transcription is shown for correction before anything is searched.
 This is not a precaution. It is the response to two errors measured in testing:
 
 | Spoken | Transcribed | Effect |
-|---|---|---|
+| --- | --- | --- |
 | *ta rufe* — closed | *ta bude* — opened | meaning reversed |
 | *dala dari* — 500 CFA | *da lada* — with reward | amount erased |
 
@@ -67,8 +67,8 @@ Cimi does not ask to be believed. Every verdict lists the articles it was built 
 
 Same audio file, same model. The only difference is a twenty-six term vocabulary list in the prompt:
 
-| Without | With |
-|---|---|
+| Without key terms | With key terms |
+| --- | --- |
 | **Cher** gomme na tu na fondé dabo, fondé da **bener** gamara | **Nijer** gomnati na fondé dabo, fondé da **Bénin** gamara |
 | 15.0 s | 4.1 s |
 
@@ -91,7 +91,7 @@ Above roughly a hundred terms, the AssemblyAI connection fails silently.
 ## Stack
 
 | Role | Service |
-|---|---|
+| --- | --- |
 | French transcription | AssemblyAI Universal Streaming |
 | Hausa and Zarma transcription | Gemini 3.1 Flash Lite |
 | Web search | Tavily |
@@ -113,7 +113,7 @@ npm install
 
 Create `.env.local`:
 
-```
+```text
 ASSEMBLYAI_API_KEY=...
 TAVILY_API_KEY=...
 GOOGLE_API_KEY=...
@@ -133,7 +133,7 @@ On the model name: the newest Gemini models carry a twenty-request-per-day free 
 
 ## Structure
 
-```
+```text
 app/
   api/token/       temporary AssemblyAI token — the key stays server-side
   api/transcrire/  Hausa and Zarma transcription
