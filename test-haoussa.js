@@ -5,8 +5,9 @@
 const fs = require("fs");
 
 const CLE = process.env.GOOGLE_API_KEY;
-const FICHIER = "test-haoussa.wav";
+const FICHIER = "test-zarma.wav";
 const MODELE = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODELE = "gemini-3.1-flash-lite";
 
 if (!CLE) {
   console.error("GOOGLE_API_KEY absente. Fais d'abord :");
@@ -36,10 +37,13 @@ async function principal() {
           {
             parts: [
               {
-                text:
-                  "Transcris cet audio mot pour mot. La langue parlee est le haoussa. " +
-                  "Reponds UNIQUEMENT avec la transcription en haoussa, " +
-                  "sans traduction, sans commentaire, sans explication.",
+                                text:
+                  "Transcris cet audio mot pour mot. La langue parlee est le zarma " +
+                  "(aussi appele djerma ou zarmaciine), parle a Niamey et dans l'ouest du Niger. " +
+                  "C'est une langue songhai, pas du haoussa. " +
+                  "Reponds UNIQUEMENT avec la transcription en zarma, " +
+                  "sans traduction, sans commentaire. " +
+                  "Si tu ne reconnais pas la langue, ecris exactement : LANGUE NON RECONNUE.",
               },
               {
                 inline_data: {

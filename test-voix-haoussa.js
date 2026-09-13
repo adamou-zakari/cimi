@@ -6,13 +6,9 @@ const fs = require("fs");
 
 const CLE = process.env.GOOGLE_API_KEY;
 const MODELE = "gemini-3.1-flash-tts-preview";
-const SORTIE = "voix-haoussa.wav";
-
+const SORTIE = "voix-zarma.wav";
 // Une phrase hausa simple, du type de ce que Cimi dirait.
-const TEXTE =
-  "Karya ne. Gwamnatin Nijar ba ta haramta sayar da siminti ba, " +
-  "a maimakon haka ta sanar da rage farashi. Na samu majiyu uku.";
-
+const TEXTE = "Nijer gomnati na fondé dabo, fondé da Bénin gamara.";
 if (!CLE) {
   console.error("GOOGLE_API_KEY absente. Fais d'abord :");
   console.error("  set GOOGLE_API_KEY=ta_cle");
