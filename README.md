@@ -1,8 +1,8 @@
 # Cimi
 
-**Voice fact-checking in French, Hausa and Zarma.**
+**Voice fact-checking in English, French, Hausa and Zarma.**
 
-Speak a claim you heard. Cimi transcribes it, searches the web, and answers with the sources on screen.
+Speak a claim you heard. Cimi transcribes it, shows you what it heard, searches the web, and answers with the sources on screen.
 
 Built on AssemblyAI for the Voice Agent Hackathon, September 2026.
 
@@ -14,9 +14,9 @@ Built on AssemblyAI for the Voice Agent Hackathon, September 2026.
 
 Most people in the Sahel get their information by voice — radio, WhatsApp voice notes, word of mouth. Fact-checking tools assume you can type, and they assume you speak a language the models were trained on.
 
-Niamey speaks French, Hausa and Zarma. Only one of the three is served by real-time speech technology.
+Niamey speaks French, Hausa and Zarma. Speech technology serves the three very unequally.
 
-Cimi works in all three anyway, and shows honestly where the technology stops.
+Cimi works in all of them anyway, and shows honestly where the technology stops. English is there so that anyone can try it.
 
 ---
 
@@ -28,13 +28,16 @@ You press a button and speak. Cimi transcribes, shows you what it heard, and wai
 Speech  →  Transcription  →  You confirm  →  Web search  →  Verdict + sources
 ```
 
-Two transcription paths, because AssemblyAI covers French but neither Hausa nor Zarma.
+Two transcription paths. AssemblyAI Universal-3.5 Pro Realtime streams English and French. Hausa and Zarma go through Gemini as recorded files — see *What does not work* for why.
 
 | Language | Transcription | Latency | Voice reply |
 | --- | --- | --- | --- |
+| English | AssemblyAI real-time streaming | immediate | browser TTS |
 | French | AssemblyAI real-time streaming | immediate | browser TTS |
 | Hausa | Gemini, file-based | 5–8 s | Gemini TTS, on demand |
-| Zarma | Gemini, file-based | 3–4 s | none available |
+| Zarma | Gemini, file-based | 3–4 s | Gemini TTS, on demand |
+
+The interface opens in English, or in French when the browser is set to French.
 
 ---
 
@@ -44,16 +47,16 @@ Two transcription paths, because AssemblyAI covers French but neither Hausa nor 
 
 Every transcription is shown for correction before anything is searched.
 
-This is not a precaution. It is the response to two errors measured in testing:
+This is not a precaution. It is the response to errors measured in testing:
 
 | Spoken | Transcribed | Effect |
 | --- | --- | --- |
 | *ta rufe* — closed | *ta bude* — opened | meaning reversed |
 | *dala dari* — 500 CFA | *da lada* — with reward | amount erased |
+| *mouton* — French word inside a Hausa sentence | *mutum* — "person" in Hausa | code-switching broken |
+| *2025* | *2005* | date wrong |
 
 A fact-checker that mishears does not simply fail. It verifies a claim nobody made, and returns a confident, sourced verdict about it. That is worse than returning nothing.
-
-The same guard catches French: *2025* was transcribed *2005* in testing.
 
 ### "Not verifiable" is a correct answer
 
@@ -65,7 +68,7 @@ Cimi does not ask to be believed. Every verdict lists the articles it was built 
 
 ### Key terms change everything on low-resource languages
 
-Same audio file, same model. The only difference is a twenty-six term vocabulary list in the prompt:
+Same Zarma audio file, same Gemini model. The only difference is a twenty-six term vocabulary list in the prompt:
 
 | Without key terms | With key terms |
 | --- | --- |
@@ -74,17 +77,36 @@ Same audio file, same model. The only difference is a twenty-six term vocabulary
 
 Proper nouns go from wrong to right, and processing is three times faster.
 
-Above roughly a hundred terms, the AssemblyAI connection fails silently.
+The AssemblyAI streaming connection receives key terms too. Above roughly a hundred, the connection fails silently.
+
+### Four prompt rules, all at the top
+
+Each rule fixes an error measured in testing:
+
+1. **Key terms** — proper nouns and local vocabulary, as above.
+2. **Language mixing** — people in Niamey drop French words into Hausa and Zarma. The rule existed from the start but sat in the middle of the instructions, and *mouton* still became *mutum*. On a small model, a buried instruction is ignored. Moved to the top with thirty common French words, it holds.
+3. **Do not restructure** — the model split continuous speech into lists and added punctuation nobody spoke: two invented *i ma* and three commas in one test.
+4. **Vowel alternation** — in Zarma, the final vowel changes with grammar: *gomnati* becomes *gomnato*, *fondo* becomes *fonda*. The model must write the vowel it heard, not the dictionary form.
+
+After each rule was added, the previous ones were tested again.
+
+### Zarma speech that a native speaker accepts
+
+The first Zarma voice was understandable but sounded foreign. Four changes fixed it: telling the model that Zarma is tonal, with four tones; not forbidding nasal sounds, which Zarma has; naming the dialect, Zarma-Tarhay; and using the Charon voice. The result was validated by a native speaker from Niamey — the author.
 
 ---
 
 ## What does not work, and why
 
-**Zarma speech synthesis.** Gemini TTS produces audible Zarma, but a native speaker of Niamey identifies a foreign accent immediately. Zarma is tonal — four tones, and tone carries meaning. No prompt tested so far reproduces that. The app shows Zarma text without offering playback.
+**Hausa on AssemblyAI.** On Universal-3.5 Pro Realtime, the model Cimi uses for English and French, *sannu* and *yaya* came back as "Some", "Bonsoir", "You are me". The model forces unfamiliar sounds into languages it knows.
 
-**Hausa on AssemblyAI.** Not among its 32 languages. Tested: *sannu* and *yaya* came back as "Some", "Bonsoir", "You are me". The model forces unfamiliar sounds into languages it knows.
+AssemblyAI does list Hausa for two other models: Universal-2, for recorded files, and Whisper streaming. Cimi does not use them, and they were not tested. The reason is the prompt rules above: the fix for *mouton*, the vowel rule and the structure rule are all written into the Gemini instructions. Moving Hausa to another model would mean rebuilding and re-measuring each of them, for a gain no test could guarantee.
+
+**Zarma on AssemblyAI.** Zarma is not in any AssemblyAI language list.
 
 **Zarma anywhere else.** It exists in Meta's Omnilingual ASR at seven billion parameters, unusable without a GPU. Hausa has a 244-million-parameter model funded by Nigeria's government. The difference is not linguistic. It is who invested.
+
+**Hausa and Zarma voice under load.** Both use a preview Gemini TTS model with a tight and variable quota. It can run out after a couple of calls.
 
 ---
 
@@ -92,12 +114,13 @@ Above roughly a hundred terms, the AssemblyAI connection fails silently.
 
 | Role | Service |
 | --- | --- |
-| French transcription | AssemblyAI Universal Streaming |
+| English and French transcription | AssemblyAI Universal-3.5 Pro Realtime |
 | Hausa and Zarma transcription | Gemini 3.1 Flash Lite |
 | Web search | Tavily |
 | Reasoning | Gemini 3.1 Flash Lite |
-| French voice | Web Speech API |
-| Hausa voice | Gemini 3.1 Flash TTS |
+| English and French voice | Web Speech API |
+| Hausa voice | Gemini 3.1 Flash TTS, voice Kore |
+| Zarma voice | Gemini 3.1 Flash TTS, voice Charon |
 | Framework | Next.js 16, App Router |
 | Hosting | Vercel |
 
@@ -138,24 +161,27 @@ app/
   api/token/       temporary AssemblyAI token — the key stays server-side
   api/transcrire/  Hausa and Zarma transcription
   api/verifier/    web search + reasoning, answers in the user's language
-  api/voix/        Hausa speech synthesis
+  api/voix/        Hausa and Zarma speech synthesis
 components/
   BoutonMicro      the two recording paths and the confirmation step
   CarteVerdict     verdict, sources, playback
-  SelecteurLangue  language tabs
+  SelecteurLangue  four language tabs
+  Logo             seal and sound wave
 lib/
   audio.js         microphone capture, chunked for streaming
   enregistreur.js  full-file recording, Opus compressed
   assemblyai.js    WebSocket, key terms list
-  prompts.js       verification instructions, three languages
+  prompts.js       verification instructions, per language
   voix.js          browser speech synthesis
 ```
+
+Language codes are `en`, `fr`, `ha`, `zr` everywhere — selector, endpoints and prompts.
 
 ---
 
 ## Documentation
 
-`DOCUMENTATION_CIMI.md` covers every measurement behind these decisions — the five transcription paths tested and what each returned, the quota traps, the errors that shaped the product.
+`DOCUMENTATION_CIMI.md` covers every measurement behind these decisions — the transcription paths tested and what each returned, the quota traps, the errors that shaped the product.
 
 ---
 

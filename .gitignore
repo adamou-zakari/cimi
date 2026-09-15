@@ -44,4 +44,4 @@ next-env.d.ts
 *.m4a
 test-*.js
 modeles.json
-desktop.ini
+desktop.ininotes/
