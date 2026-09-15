@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { TEXTES } from "@/lib/textes";
 
 // La couleur vient du verdict NORMALISE : "gaskiya", "cimi" et "vrai"
 // doivent produire le meme vert, quelle que soit la langue.
@@ -13,10 +14,7 @@ const COULEURS = {
 
 // Le navigateur n'a de voix ni en hausa ni en zarma.
 // Les deux passent par Gemini TTS, a la demande.
-const AVEC_VOIX_DISTANTE = {
-  ha: "Ecouter en hausa",
-  zr: "Ecouter en zarma",
-};
+const AVEC_VOIX_DISTANTE = ["ha", "zr"];
 
 export default function CarteVerdict({ resultat, langue }) {
   const [chargementVoix, setChargementVoix] = useState(false);
@@ -36,7 +34,8 @@ export default function CarteVerdict({ resultat, langue }) {
 
   const cle = resultat.verdictNormalise || resultat.verdict;
   const couleur = COULEURS[cle] || COULEURS["non verifiable"];
-  const libelleVoix = AVEC_VOIX_DISTANTE[langue];
+  const t = TEXTES[langue];
+  const voixDistante = AVEC_VOIX_DISTANTE.includes(langue);
 
   async function ecouter() {
     setErreurVoix("");
@@ -54,8 +53,7 @@ export default function CarteVerdict({ resultat, langue }) {
       });
 
       if (!reponse.ok) {
-        const donnees = await reponse.json().catch(() => ({}));
-        setErreurVoix(donnees.error || "La voix n'est pas disponible");
+        setErreurVoix(t.erreurVoix);
         return;
       }
 
@@ -68,7 +66,7 @@ export default function CarteVerdict({ resultat, langue }) {
         await audioRef.current.play();
       }
     } catch {
-      setErreurVoix("La voix n'est pas disponible");
+      setErreurVoix(t.erreurVoix);
     } finally {
       setChargementVoix(false);
     }
@@ -91,14 +89,14 @@ export default function CarteVerdict({ resultat, langue }) {
 
       <p className="leading-relaxed mb-5">{resultat.explication}</p>
 
-      {libelleVoix && (
+      {voixDistante && (
         <div className="mb-5">
           <button
             onClick={ecouter}
             disabled={chargementVoix}
             className="bouton-contour"
           >
-            {chargementVoix ? "Generation de la voix" : libelleVoix}
+            {chargementVoix ? t.generationVoix : t.ecouter}
           </button>
 
           {erreurVoix && (
@@ -117,7 +115,7 @@ export default function CarteVerdict({ resultat, langue }) {
           style={{ borderTop: "1px solid var(--encre-trait)" }}
         >
           <p className="text-xs mb-3" style={{ color: "var(--coton-doux)" }}>
-            Lisez les sources vous-meme
+            {t.sourcesTitre}
           </p>
           {/* Numerotees parce que ce sont reellement des pieces
               successives d'un dossier, pas une decoration. */}
@@ -146,7 +144,7 @@ export default function CarteVerdict({ resultat, langue }) {
       )}
 
       <p className="text-xs mt-5" style={{ color: "var(--coton-doux)" }}>
-        Confiance : {resultat.confiance}
+        {t.confiance} : {resultat.confiance}
       </p>
     </section>
   );

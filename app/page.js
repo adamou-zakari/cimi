@@ -3,34 +3,22 @@
 import { useEffect, useState } from "react";
 import BoutonMicro from "@/components/BoutonMicro";
 import Logo from "@/components/Logo";
-
-// Textes de l'accueil. Meme regle que le reste de l'application :
-// anglais par defaut, francais si le navigateur est en francais.
-const TEXTES = {
-  en: {
-    titre: "Say what you heard.",
-    sousTitre:
-      "Cimi finds the sources, tells you what they say, and lets you read them yourself.",
-    pied: "Cimi means truth in Zarma. English, French, Hausa and Zarma.",
-  },
-  fr: {
-    titre: "Dites ce que vous avez entendu.",
-    sousTitre:
-      "Cimi cherche les sources, vous dit ce qu'elles racontent, et vous laisse les lire vous-même.",
-    pied: "Cimi veut dire vérité en zarma. Anglais, français, haoussa et zarma.",
-  },
-};
+import { TEXTES, LANG_HTML, langueDuNavigateur } from "@/lib/textes";
 
 export default function Home() {
+  // La langue vit ici pour que le titre et le pied de page suivent
+  // l'onglet choisi dans BoutonMicro.
   // Le serveur ne connait pas la langue du navigateur : on rend l'anglais,
-  // puis on bascule en francais apres le montage si besoin.
+  // puis on bascule apres le montage si besoin.
   const [langue, setLangue] = useState("en");
 
   useEffect(() => {
-    if (navigator.language?.toLowerCase().startsWith("fr")) {
-      setLangue("fr");
-    }
+    setLangue(langueDuNavigateur());
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = LANG_HTML[langue];
+  }, [langue]);
 
   const t = TEXTES[langue];
 
@@ -54,7 +42,7 @@ export default function Home() {
           </p>
         </div>
 
-        <BoutonMicro />
+        <BoutonMicro langue={langue} onChangerLangue={setLangue} />
       </main>
 
       <footer

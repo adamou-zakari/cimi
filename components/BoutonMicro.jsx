@@ -7,24 +7,21 @@ import { EnregistreurFichier } from "@/lib/enregistreur";
 import { parler, taireLaVoix, phraseAPrononcer } from "@/lib/voix";
 import CarteVerdict from "@/components/CarteVerdict";
 import SelecteurLangue from "@/components/SelecteurLangue";
+import { TEXTES } from "@/lib/textes";
 
 // L'anglais et le francais passent par le streaming AssemblyAI.
 // Le hausa et le zarma passent par un fichier envoye a Gemini :
-// AssemblyAI ne couvre aucune des deux.
+// le zarma n'est dans aucune liste AssemblyAI, et le modele temps reel
+// ne comprend pas le hausa. Les regles de prompt vivent dans la consigne Gemini.
 const EN_STREAMING = ["en", "fr"];
 
 // Codes de langue : en, fr, ha, zr. Ils doivent rester identiques
-// entre le selecteur, les endpoints et les prompts.
-const MESSAGES_ATTENTE = {
-  ha: "Transcription du hausa. Les modeles sont moins entraines sur cette langue, cela prend quelques secondes de plus.",
-  zr: "Transcription du zarma. Aucun service commercial ne transcrit cette langue : Cimi utilise un modele generaliste, le resultat demande souvent une correction.",
-};
+// entre le selecteur, les endpoints, les prompts et lib/textes.js.
 
-export default function BoutonMicro() {
-  // On demarre en anglais : pendant le jugement du hackathon, ce sont
-  // des anglophones qui ouvriront l'application. La detection ci-dessous
-  // bascule en francais pour les navigateurs francophones.
-  const [langue, setLangue] = useState("en");
+// La langue est tenue par la page (app/page.js), pour que le titre
+// et le pied de page suivent l'onglet choisi.
+export default function BoutonMicro({ langue, onChangerLangue }) {
+  const t = TEXTES[langue];
   const [enEcoute, setEnEcoute] = useState(false);
   const [partiel, setPartiel] = useState("");
   const [enTranscription, setEnTranscription] = useState(false);
@@ -45,12 +42,6 @@ export default function BoutonMicro() {
       connexion.current?.fermer();
       enregistreur.current?.annuler();
     };
-  }, []);
-
-  // Le navigateur annonce sa langue. Un juge anglophone arrive en anglais,
-  // un utilisateur nigerien en francais, sans avoir a choisir.
-  useEffect(() => {
-    if (navigator.language?.startsWith("fr")) setLangue("fr");
   }, []);
 
   const streaming = EN_STREAMING.includes(langue);
@@ -74,8 +65,10 @@ export default function BoutonMicro() {
           arreterEcoute();
           setAConfirmer({ texte, incertain: false });
         },
-        onErreur: (message) => {
-          setErreur(message);
+        // Le message technique de la connexion n'est pas affiche :
+        // on montre le texte de l'interface, dans la langue choisie.
+        onErreur: () => {
+          setErreur(t.erreurConnexion);
           arreterEcoute();
         },
       },
@@ -117,7 +110,7 @@ export default function BoutonMicro() {
       const donnees = await reponse.json();
 
       if (!reponse.ok) {
-        setErreur(donnees.error || "La transcription n'a pas abouti");
+        setErreur(t.erreurTranscription);
         return;
       }
 
@@ -126,7 +119,7 @@ export default function BoutonMicro() {
         incertain: donnees.incertain,
       });
     } catch {
-      setErreur("La transcription n'a pas abouti");
+      setErreur(t.erreurTranscription);
     } finally {
       setEnTranscription(false);
     }
@@ -146,7 +139,7 @@ export default function BoutonMicro() {
       }
       setEnEcoute(true);
     } catch {
-      setErreur("Le micro n'est pas accessible. Autorisez-le dans votre navigateur.");
+      setErreur(t.erreurMicro);
       arreterEcoute();
     }
   }
@@ -184,7 +177,7 @@ export default function BoutonMicro() {
       const donnees = await reponse.json();
 
       if (!reponse.ok) {
-        setErreur(donnees.error || "La verification n'a pas abouti");
+        setErreur(t.erreurVerification);
         return;
       }
 
@@ -198,7 +191,7 @@ export default function BoutonMicro() {
         parler(phraseAPrononcer(donnees), langue === "en" ? "en-US" : "fr-FR");
       }
     } catch {
-      setErreur("La verification n'a pas abouti");
+      setErreur(t.erreurVerification);
     } finally {
       setEnVerification(false);
     }
@@ -206,17 +199,17 @@ export default function BoutonMicro() {
 
   const occupe = enTranscription || enVerification;
 
-  let texteBouton = "Parler";
-  if (enTranscription) texteBouton = "Transcription";
-  else if (enVerification) texteBouton = "Verification";
-  else if (enEcoute) texteBouton = "Terminer";
+  let texteBouton = t.parler;
+  if (enTranscription) texteBouton = t.enTranscription;
+  else if (enVerification) texteBouton = t.enVerification;
+  else if (enEcoute) texteBouton = t.terminer;
 
   return (
     <div className="flex flex-col items-center gap-7 w-full max-w-xl">
       <SelecteurLangue
         langue={langue}
         onChanger={(l) => {
-          setLangue(l);
+          onChangerLangue(l);
           taireLaVoix();
           reinitialiser();
         }}
@@ -242,7 +235,7 @@ export default function BoutonMicro() {
             }}
             className="bouton-contour"
           >
-            {voixActive ? "Couper le son" : "Activer le son"}
+            {voixActive ? t.couperSon : t.activerSon}
           </button>
         )}
       </div>
@@ -251,7 +244,7 @@ export default function BoutonMicro() {
       <div className="min-h-6 text-center">
         {enEcoute && !streaming && (
           <p className="text-sm" style={{ color: "var(--coton-doux)" }}>
-            Parlez, puis appuyez sur Terminer.
+            {t.consigneFichier}
           </p>
         )}
 
@@ -260,13 +253,13 @@ export default function BoutonMicro() {
             className="text-sm max-w-md mx-auto"
             style={{ color: "var(--coton-doux)" }}
           >
-            {MESSAGES_ATTENTE[langue]}
+            {t.attente}
           </p>
         )}
 
         {enVerification && (
           <p className="text-sm" style={{ color: "var(--coton-doux)" }}>
-            Recherche des sources.
+            {t.recherche}
           </p>
         )}
 
@@ -287,6 +280,7 @@ export default function BoutonMicro() {
         <EcranConfirmation
           initial={aConfirmer.texte}
           incertain={aConfirmer.incertain}
+          t={t}
           onValider={verifier}
           onAnnuler={() => setAConfirmer(null)}
         />
@@ -304,7 +298,7 @@ export default function BoutonMicro() {
 // devenu "mutum" (personne). En zarma, "Niger" est devenu "Cher".
 // Sans cette etape, Cimi verifierait une affirmation que personne
 // n'a formulee, et rendrait un verdict source sur elle.
-function EcranConfirmation({ initial, incertain, onValider, onAnnuler }) {
+function EcranConfirmation({ initial, incertain, t, onValider, onAnnuler }) {
   const [texte, setTexte] = useState(initial);
 
   return (
@@ -317,12 +311,12 @@ function EcranConfirmation({ initial, incertain, onValider, onAnnuler }) {
         className="block text-sm mb-3"
         style={{ color: "var(--coton-doux)" }}
       >
-        Voici ce que Cimi a entendu. Corrigez avant de verifier.
+        {t.confirmation}
       </label>
 
       {incertain && (
         <p className="text-xs mb-3" style={{ color: "var(--partiel)" }}>
-          Les passages marques [?] n&apos;ont pas ete compris avec certitude.
+          {t.incertain}
         </p>
       )}
 
@@ -341,10 +335,10 @@ function EcranConfirmation({ initial, incertain, onValider, onAnnuler }) {
           className="bouton-parler"
           style={{ padding: "0.7rem 1.75rem", fontSize: "0.95rem" }}
         >
-          Verifier
+          {t.verifier}
         </button>
         <button onClick={onAnnuler} className="bouton-contour">
-          Recommencer
+          {t.recommencer}
         </button>
       </div>
     </div>
