@@ -8,18 +8,23 @@ import { parler, taireLaVoix, phraseAPrononcer } from "@/lib/voix";
 import CarteVerdict from "@/components/CarteVerdict";
 import SelecteurLangue from "@/components/SelecteurLangue";
 
-// Le francais passe par le streaming AssemblyAI.
+// L'anglais et le francais passent par le streaming AssemblyAI.
 // Le hausa et le zarma passent par un fichier envoye a Gemini :
 // AssemblyAI ne couvre aucune des deux.
-const EN_STREAMING = ["fr", "en"];
+const EN_STREAMING = ["en", "fr"];
 
+// Codes de langue : en, fr, ha, zr. Ils doivent rester identiques
+// entre le selecteur, les endpoints et les prompts.
 const MESSAGES_ATTENTE = {
   ha: "Transcription du hausa. Les modeles sont moins entraines sur cette langue, cela prend quelques secondes de plus.",
-  zar: "Transcription du zarma. Aucun service commercial ne transcrit cette langue : Cimi utilise un modele generaliste, le resultat demande souvent une correction.",
+  zr: "Transcription du zarma. Aucun service commercial ne transcrit cette langue : Cimi utilise un modele generaliste, le resultat demande souvent une correction.",
 };
 
 export default function BoutonMicro() {
-  const [langue, setLangue] = useState("fr");
+  // On demarre en anglais : pendant le jugement du hackathon, ce sont
+  // des anglophones qui ouvriront l'application. La detection ci-dessous
+  // bascule en francais pour les navigateurs francophones.
+  const [langue, setLangue] = useState("en");
   const [enEcoute, setEnEcoute] = useState(false);
   const [partiel, setPartiel] = useState("");
   const [enTranscription, setEnTranscription] = useState(false);
@@ -42,6 +47,12 @@ export default function BoutonMicro() {
     };
   }, []);
 
+  // Le navigateur annonce sa langue. Un juge anglophone arrive en anglais,
+  // un utilisateur nigerien en francais, sans avoir a choisir.
+  useEffect(() => {
+    if (navigator.language?.startsWith("fr")) setLangue("fr");
+  }, []);
+
   const streaming = EN_STREAMING.includes(langue);
 
   function reinitialiser() {
@@ -51,23 +62,25 @@ export default function BoutonMicro() {
     setAConfirmer(null);
   }
 
-  // ---------- STREAMING : francais ----------
+  // ---------- STREAMING : anglais et francais ----------
 
   async function demarrerStreaming() {
     connexion.current = new ConnexionTranscription();
-    await connexion.current.connecter({
-      onPartiel: (texte) => setPartiel(texte),
-      onFinal: (texte) => {
-        setPartiel("");
-        arreterEcoute();
-        setAConfirmer({ texte, incertain: false });
+    await connexion.current.connecter(
+      {
+        onPartiel: (texte) => setPartiel(texte),
+        onFinal: (texte) => {
+          setPartiel("");
+          arreterEcoute();
+          setAConfirmer({ texte, incertain: false });
+        },
+        onErreur: (message) => {
+          setErreur(message);
+          arreterEcoute();
+        },
       },
-      onErreur: (message) => {
-        setErreur(message);
-        arreterEcoute();
-      },
-        }, langue);
-
+      langue
+    );
 
     capture.current = new CaptureAudio();
     await capture.current.demarrer((morceau) => {
@@ -177,11 +190,12 @@ export default function BoutonMicro() {
 
       setResultat(donnees);
 
-      // Voix automatique en francais seulement : le navigateur la fournit
-      // gratuitement et instantanement. Le hausa passe par un bouton
-      // dans la carte, car sa generation prend jusqu'a 17 secondes.
-      if (voixActive && langue === "fr") {
-        parler(phraseAPrononcer(donnees));
+      // Voix automatique en anglais et francais seulement : le navigateur
+      // les fournit gratuitement et instantanement. Le hausa et le zarma
+      // passent par un bouton dans la carte, car Gemini TTS prend
+      // jusqu'a 17 secondes et consomme du quota.
+      if (voixActive && EN_STREAMING.includes(langue)) {
+        parler(phraseAPrononcer(donnees), langue === "en" ? "en-US" : "fr-FR");
       }
     } catch {
       setErreur("La verification n'a pas abouti");
@@ -219,7 +233,7 @@ export default function BoutonMicro() {
           {texteBouton}
         </button>
 
-        {langue === "fr" && (
+        {streaming && (
           <button
             onClick={() => {
               const suivant = !voixActive;
@@ -242,7 +256,10 @@ export default function BoutonMicro() {
         )}
 
         {enTranscription && (
-          <p className="text-sm max-w-md mx-auto" style={{ color: "var(--coton-doux)" }}>
+          <p
+            className="text-sm max-w-md mx-auto"
+            style={{ color: "var(--coton-doux)" }}
+          >
             {MESSAGES_ATTENTE[langue]}
           </p>
         )}
@@ -283,14 +300,18 @@ export default function BoutonMicro() {
 // Etape de confirmation : l'utilisateur relit et corrige avant
 // que la verification ne parte.
 // Justification mesuree : en hausa, "ta rufe" (a ferme) a ete transcrit
-// "ta bude" (a ouvert) - sens inverse. En zarma, "Niger" est devenu
-// "Cher". Sans cette etape, Cimi verifierait une affirmation que
-// personne n'a formulee, et rendrait un verdict sourcé sur elle.
+// "ta bude" (a ouvert) - sens inverse. Le mot francais "mouton" est
+// devenu "mutum" (personne). En zarma, "Niger" est devenu "Cher".
+// Sans cette etape, Cimi verifierait une affirmation que personne
+// n'a formulee, et rendrait un verdict source sur elle.
 function EcranConfirmation({ initial, incertain, onValider, onAnnuler }) {
   const [texte, setTexte] = useState(initial);
 
   return (
-    <div className="w-full rounded-lg p-5" style={{ border: "1px solid var(--encre-trait)" }}>
+    <div
+      className="w-full rounded-lg p-5"
+      style={{ border: "1px solid var(--encre-trait)" }}
+    >
       <label
         htmlFor="transcription"
         className="block text-sm mb-3"
