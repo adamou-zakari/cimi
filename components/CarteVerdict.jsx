@@ -2,13 +2,20 @@
 
 import { useState, useRef, useEffect } from "react";
 
-// La couleur vient du verdict NORMALISE : "gaskiya" et "vrai"
+// La couleur vient du verdict NORMALISE : "gaskiya", "cimi" et "vrai"
 // doivent produire le meme vert, quelle que soit la langue.
 const COULEURS = {
   vrai: "var(--vrai)",
   faux: "var(--faux)",
   "partiellement vrai": "var(--partiel)",
   "non verifiable": "var(--inconnu)",
+};
+
+// Le navigateur n'a de voix ni en hausa ni en zarma.
+// Les deux passent par Gemini TTS, a la demande.
+const AVEC_VOIX_DISTANTE = {
+  ha: "Ecouter en hausa",
+  zr: "Ecouter en zarma",
 };
 
 export default function CarteVerdict({ resultat, langue }) {
@@ -29,6 +36,7 @@ export default function CarteVerdict({ resultat, langue }) {
 
   const cle = resultat.verdictNormalise || resultat.verdict;
   const couleur = COULEURS[cle] || COULEURS["non verifiable"];
+  const libelleVoix = AVEC_VOIX_DISTANTE[langue];
 
   async function ecouter() {
     setErreurVoix("");
@@ -42,7 +50,7 @@ export default function CarteVerdict({ resultat, langue }) {
       const reponse = await fetch("/api/voix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texte }),
+        body: JSON.stringify({ texte, langue }),
       });
 
       if (!reponse.ok) {
@@ -83,14 +91,14 @@ export default function CarteVerdict({ resultat, langue }) {
 
       <p className="leading-relaxed mb-5">{resultat.explication}</p>
 
-      {langue === "ha" && (
+      {libelleVoix && (
         <div className="mb-5">
           <button
             onClick={ecouter}
             disabled={chargementVoix}
             className="bouton-contour"
           >
-            {chargementVoix ? "Generation de la voix" : "Ecouter en hausa"}
+            {chargementVoix ? "Generation de la voix" : libelleVoix}
           </button>
 
           {erreurVoix && (

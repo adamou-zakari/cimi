@@ -11,7 +11,7 @@ import SelecteurLangue from "@/components/SelecteurLangue";
 // Le francais passe par le streaming AssemblyAI.
 // Le hausa et le zarma passent par un fichier envoye a Gemini :
 // AssemblyAI ne couvre aucune des deux.
-const EN_STREAMING = ["fr"];
+const EN_STREAMING = ["fr", "en"];
 
 const MESSAGES_ATTENTE = {
   ha: "Transcription du hausa. Les modeles sont moins entraines sur cette langue, cela prend quelques secondes de plus.",
@@ -66,7 +66,8 @@ export default function BoutonMicro() {
         setErreur(message);
         arreterEcoute();
       },
-    });
+        }, langue);
+
 
     capture.current = new CaptureAudio();
     await capture.current.demarrer((morceau) => {
